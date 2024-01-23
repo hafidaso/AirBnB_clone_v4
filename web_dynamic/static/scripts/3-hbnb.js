@@ -1,57 +1,84 @@
-$(document).ready(function () {
-	const amenities = {};
-	$("li input[type=checkbox]").change(function () {
-		if (this.checked) {
-			amenities[this.dataset.name] = this.dataset.id;
-		} else {
-			delete amenities[this.dataset.name];
-		}
-		$(".amenities h4").text(Object.keys(amenities).sort().join(", "));
-	});
-
-	// Obtain status of API
-	$.getJSON("http://0.0.0.0:5001/api/v1/status/", (data) => {
-		if (data.status === "OK") {
-			$("div#api_status").addClass("available");
-		} else {
-			$("div#api_status").removeClass("available");
-		}
-	});
-
-	// Convey data about places
-	//Convey
-	$.post({
-		url: `http://0.0.0.0:5001/api/v1/places_search`,
-		data: JSON.stringify({}),
-		headers: {
-			"Content-Type": "application/json",
-		},
-		success: (data) => {
-			data.forEach((place) =>
-				$("section.places").append(
-					`<article>
-			<div class="title_box">
-			<h2>${place.name}</h2>
-			<div class="price_by_night">$${place.price_by_night}</div>
-			</div>
-			<div class="information">
-			<div class="max_guest">${place.max_guest} Guest${
-						place.max_guest !== 1 ? "s" : ""
-					}</div>
-			<div class="number_rooms">${place.number_rooms} Bedroom${
-						place.number_rooms !== 1 ? "s" : ""
-					}</div>
-			<div class="number_bathrooms">${place.number_bathrooms} Bathroom${
-						place.number_bathrooms !== 1 ? "s" : ""
-					}</div>
-			</div> 
-			<div class="description">
-			${place.description}
-			</div>
-				</article>`
-				)
-			);
-		},
-		dataType: "json",
-	});
+/* Script that listen for changes on each INPUT checkbox tag */
+/* Dynamic Funcionality */
+$('document').ready(function () {
+  /* Listens for changes on each INPUT checkbox tag */
+  const amenitiesId = {};
+  $('INPUT[type="checkbox"]').click(function () {
+    if ($(this).prop('checked')) {
+      amenitiesId[$(this).attr('data-id')] = $(this).attr('data-name');
+    } else {
+      delete amenitiesId[$(this).attr('data-id')];
+    }
+    $('.amenities h4').text(Object.values(amenitiesId).join(', '));
+  });
+  /* Get status of api and change class if api not available
+  Request status every 10 seconds */
+  /* Simple way, manual re-loading page: */
+  /* $.get(`http://${window.location.hostname}:5001/api/v1/status/`, function(status){
+    if (status.status === 'OK') {
+      $('DIV#api_status').addClass('available');
+    } else {
+       $('DIV#api_status').removeClass('available');
+    }
+  });
+  */
+  const callout = function () {
+    $.ajax({
+      type: 'get',
+      url: `http://${window.location.hostname}:5001/api/v1/status/`,
+      timeout: 5000,
+      success: function (status) {
+        if (status.status === 'OK') {
+          $('DIV#api_status').addClass('available');
+        } else {
+          $('DIV#api_status').removeClass('available');
+        }
+      },
+      error: function () {
+        $('DIV#api_status').removeClass('available');
+      },
+      complete: function () {
+        setTimeout(callout, 10000);
+      }
+    });
+  };
+  callout();
+  /*
+    Retrieve all places and create a articule tag with them
+  */
+  const getPlaces = function () {
+    $.ajax({
+      type: 'POST',
+      contentType: 'application/json',
+      url: 'http://localhost:5001/api/v1/places_search/',
+      data: '{}',
+      dataType: 'json',
+      success: function (places) {
+        $.each(places, function (index, place) {
+          $('.places').append(
+            '<article>' +
+              '<div class="title_box">' +
+              '<h2>' + place.name + '</h2>' +
+              '<div class="price_by_night">' + place.price_by_night +
+              '</div>' +
+              '</div>' +
+              '<div class="information">' +
+              '<div class="max_guest">' +
+              '<br />' + place.max_guest + ' Guests' +
+              '</div>' +
+              '<div class="number_rooms">' +
+              '<br />' + place.number_rooms + ' Bedrooms' +
+              '</div>' +
+              '<div class="number_bathrooms">' +
+              '<br />' + place.number_bathrooms + ' Bathroom' +
+              '</div>' +
+              '</div>' +
+              '<div class="description">' + place.description +
+              '</div>' +
+              '</article>');
+        });
+      }
+    });
+  };
+  getPlaces();
 });

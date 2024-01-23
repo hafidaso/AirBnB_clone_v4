@@ -1,158 +1,151 @@
+/* Dynamic Funcionality */
 $('document').ready(function () {
-  // Tick-box amenity
-  const dictIds = {};
-  $('.amenities input:checkbox').change(function () {
-    if ($(this).is(':checked')) {
-      dictIds[$(this).attr('data-name')] = $(this).attr('data-id');
+  /* Listens for changes on each amenities INPUT checkbox tag */
+  const amenitiesId = {};
+  $('.amenities INPUT[type="checkbox"]').click(function () {
+    if ($(this).prop('checked')) {
+      amenitiesId[$(this).attr('data-id')] = $(this).attr('data-name');
     } else {
-      delete dictIds[$(this).attr('data-name')];
+      delete amenitiesId[$(this).attr('data-id')];
     }
-    let names = '';
-    for (const key in dictIds) {
-      if (names === '') {
-        names = key;
-        continue;
-      }
-      names = names + ', ' + key;
-    }
-    $('.amenities h4').text(names);
+    $('.amenities h4').text(Object.values(amenitiesId).join(', '));
   });
-
-  // Tick-box state - city
-  // Develope dict with states and cities checked {state: [{id: name}], cities: [{id: name}]}
-  const stateCity = {};
-  $('.locations input:checkbox').change(function () {
-    if ($(this).is(':checked')) {
-      if ($(this).attr('data-type') === 'state') {
-        if (stateCity.state) {
-          stateCity.state.push({ [$(this).attr('data-id')]: $(this).attr('data-name') });
-        } else {
-          stateCity.state = [{ [$(this).attr('data-id')]: $(this).attr('data-name') }];
-        }
-      } else {
-        if (stateCity.city) {
-          stateCity.city.push({ [$(this).attr('data-id')]: $(this).attr('data-name') });
-        } else {
-          stateCity.city = [{ [$(this).attr('data-id')]: $(this).attr('data-name') }];
-        }
-      }
+  /* Listens for changes on each states INPUT checkbox tag */
+  const statesId = {};
+  const citiesId = {};
+  const citiesStates = {};
+  $('.locations h2 INPUT[type="checkbox"]').click(function () {
+    if ($(this).prop('checked')) {
+      statesId[$(this).attr('data-id')] = $(this).attr('data-name');
+      citiesStates[$(this).attr('data-id')] = $(this).attr('data-name');
     } else {
-      const id = $(this).attr('data-id');
-      Object.keys(stateCity).forEach(function (item) {
-        stateCity[item].forEach(function (obj, index) {
-          if (Object.keys(obj)[0] === id) {
-            stateCity[item].splice(index, 1);
-          }
+      delete statesId[$(this).attr('data-id')];
+      delete citiesStates[$(this).attr('data-id')];
+    }
+    $('.locations h4').text(Object.values(citiesStates).join(', '));
+    // Object.assign(citiesStates, statesId, citiesId);
+    // $('.locations h4').text(Object.values(citiesStates).join(', '));
+  });
+  /* Listens for changes on each cities INPUT checkbox tag */
+  $('.locations ul li ul INPUT[type="checkbox"]').click(function () {
+    if ($(this).prop('checked')) {
+      citiesId[$(this).attr('data-id')] = $(this).attr('data-name');
+      citiesStates[$(this).attr('data-id')] = $(this).attr('data-name');
+    } else {
+      delete citiesId[$(this).attr('data-id')];
+      delete citiesStates[$(this).attr('data-id')];
+    }
+    $('.locations h4').text(Object.values(citiesStates).join(', '));
+  });
+  /* Get status of api and change class if api not available
+  Request status every 10 seconds */
+  /* Simple way, manual re-loading page: */
+  /* $.get(`http://${window.location.hostname}:5001/api/v1/status/`, function(status){
+    if (status.status === 'OK') {
+      $('DIV#api_status').addClass('available');
+    } else {
+       $('DIV#api_status').removeClass('available');
+    }
+  });
+  */
+  const callout = function () {
+    $.ajax({
+      type: 'get',
+      url: `http://${window.location.hostname}:5001/api/v1/status/`,
+      timeout: 5000,
+      success: function (status) {
+        if (status.status === 'OK') {
+          $('DIV#api_status').addClass('available');
+        } else {
+          $('DIV#api_status').removeClass('available');
+        }
+      },
+      error: function () {
+        $('DIV#api_status').removeClass('available');
+      },
+      complete: function () {
+        setTimeout(callout, 10000);
+      }
+    });
+  };
+  callout();
+  /*
+    Retrieve all places and create a articule tag with them
+  */
+  const getPlaces = function () {
+    $.ajax({
+      type: 'POST',
+      contentType: 'application/json',
+      url: 'http://localhost:5001/api/v1/places_search/',
+      data: '{}',
+      dataType: 'json',
+      success: function (places) {
+        $.each(places, function (index, place) {
+          $('.places').append(
+            '<article>' +
+            '<div class="title_box">' +
+            '<h2>' + place.name + '</h2>' +
+            '<div class="price_by_night">' + '$' + place.price_by_night +
+            '</div>' +
+            '</div>' +
+            '<div class="information">' +
+            '<div class="max_guest">' +
+            '<br />' + place.max_guest + ' Guests' +
+            '</div>' +
+            '<div class="number_rooms">' +
+            '<br />' + place.number_rooms + ' Bedrooms' +
+            '</div>' +
+            '<div class="number_bathrooms">' +
+            '<br />' + place.number_bathrooms + ' Bathroom' +
+            '</div>' +
+            '</div>' +
+            '<div class="description">' + place.description +
+            '</div>' +
+            '</article>');
         });
-      });
-    }
-    // Attach names of states and cities to h4
-    let text = '';
-    Object.keys(stateCity).forEach(function (item) {
-      stateCity[item].forEach(function (obj) {
-        if (text === '') {
-          text = Object.values(obj)[0];
-        } else {
-          text += ', ' + Object.values(obj)[0];
-        }
-      });
+      }
     });
-    $('.locations h4').text(text);
-  });
-
-  // Appeal status
-  $.get('http://0.0.0.0:5001/api/v1/status/', function (data, textStatus) {
-    if (data.status === 'OK') {
-      $('div#api_status').addClass('available');
-    } else {
-      $('div#api_status').removeClass('available');
-    }
-  });
-  // Convey data about places
-  // Convey
-  $.post({
-    url: 'http://0.0.0.0:5001/api/v1/places_search',
-    data: JSON.stringify({}),
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    success: (data) => {
-      data.forEach((place) =>
-        $('section.places').append(
-          `<article>
-           <div class="title_box">
-           <h2>${place.name}</h2>
-           <div class="price_by_night">$${place.price_by_night}</div>
-           </div>
-           <div class="information">
-           <div class="max_guest">${place.max_guest} Guest${
-             place.max_guest !== 1 ? 's' : ''
-               }</div>
-             <div class="number_rooms">${place.number_rooms} Bedroom${
-               place.number_rooms !== 1 ? 's' : ''
-              }</div>
-             <div class="number_bathrooms">${place.number_bathrooms} Bathroom${
-               place.number_bathrooms !== 1 ? 's' : ''
-               }</div>
-             </div> 
-             <div class="description">
-               ${place.description}
-             </div>
-             </article>`
-        ));
-    },
-    dataType: 'json'
-  });
-  // click hunt results
-  $('.filters button').click(function () {
-    const list = [];
-    for (const key in dictIds) {
-      list.push(dictIds[key]);
-    }
-    const listSatesIds = [];
-    const listCitiesIds = [];
-    Object.keys(stateCity).forEach(function (item) {
-      stateCity[item].forEach(function (obj, index) {
-        if (item === 'state') {
-          listSatesIds.push(Object.keys(obj)[0]);
-        } else {
-          listCitiesIds.push(Object.keys(obj)[0]);
-        }
-      });
+  };
+  getPlaces();
+  /*
+    Filter places by amenities on button search click
+  */
+  $('button').click(function () {
+    $.ajax({
+      type: 'POST',
+      contentType: 'application/json',
+      url: 'http://localhost:5001/api/v1/places_search/',
+      data: JSON.stringify({
+        amenities: Object.keys(amenitiesId),
+        states: Object.keys(statesId),
+        cities: Object.keys(citiesId)
+      }),
+      dataType: 'json',
+      success: function (places) {
+        $('.places').empty();
+        $.each(places, function (index, place) {
+          $('.places').append(
+            '<article>' +
+            '<div class="title_box">' +
+            '<h2>' + place.name + '</h2>' +
+            '<div class="price_by_night">' + '$' + place.price_by_night +
+            '</div>' +
+            '</div>' +
+            '<div class="information">' +
+            '<div class="max_guest">' +
+            '<br />' + place.max_guest + ' Guests' +
+            '</div>' +
+            '<div class="number_rooms">' +
+            '<br />' + place.number_rooms + ' Bedrooms' +
+            '</div>' +
+            '<div class="number_bathrooms">' +
+            '<br />' + place.number_bathrooms + ' Bathroom' +
+            '</div>' +
+            '</div>' +
+            '<div class="description">' + place.description +
+            '</div>' +
+            '</article>');
+        });
+      }
     });
-    $.post({
-      url: 'http://0.0.0.0:5001/api/v1/places_search',
-      data: JSON.stringify({ states: listSatesIds, cities: listCitiesIds, amenities: list }),
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      success: (data) => {
-        $('section.places').empty();
-        data.forEach((place) =>
-          $('section.places').append(
-            `<article>
-            <div class="title_box">
-            <h2>${place.name}</h2>
-            <div class="price_by_night">$${place.price_by_night}</div>
-            </div>
-            <div class="information">
-            <div class="max_guest">${place.max_guest} Guest${
-                       place.max_guest !== 1 ? 's' : ''
-                 }</div>
-            <div class="number_rooms">${place.number_rooms} Bedroom${
-                    place.number_rooms !== 1 ? 's' : ''
-            }</div>
-            <div class="number_bathrooms">${place.number_bathrooms} Bathroom${
-              place.number_bathrooms !== 1 ? 's' : ''
-           }</div>
-            </div> 
-            <div class="description">
-            ${place.description}
-            </div>
-            </article>`
-          ));
-      },
-      dataType: 'json'
-    });
-  });
-});
+  })

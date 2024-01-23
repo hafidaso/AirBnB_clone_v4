@@ -1,6 +1,5 @@
 #!/usr/bin/python3
 """
-Graham S. Paul (w3c_validator.py)
 W3C validator for Holberton School
 
 For HTML and CSS files.
@@ -46,13 +45,13 @@ def __print_stdout(msg):
 
 
 def __print_stderr(msg):
-    """Pull message in STDERR
+    """Print message in STDERR
     """
     sys.stderr.write(msg)
 
 
 def __analyse_html(file_path):
-    """Begin analyse of HTML file
+    """Start analyse of HTML file
     """
     h = {'Content-Type': "text/html; charset=utf-8"}
     d = open(file_path, "rb").read()
@@ -66,7 +65,7 @@ def __analyse_html(file_path):
 
 
 def __analyse_css(file_path):
-    """Begin analyse of CSS file
+    """Start analyse of CSS file
     """
     d = {'output': "json"}
     f = {'file': (file_path, open(file_path, 'rb'), 'text/css')}
@@ -80,7 +79,7 @@ def __analyse_css(file_path):
 
 
 def __analyse(file_path):
-    """Begin analyse of a file and print the result
+    """Start analyse of a file and print the result
     """
     nb_errors = 0
     try:
@@ -113,12 +112,12 @@ def __files_loop():
 
 
 if __name__ == "__main__":
-    """Default
+    """Main
     """
     if len(sys.argv) < 2:
         __print_stderr("usage: w3c_validator.py file1 file2 ...\n")
         exit(1)
 
-    """Run tests, then exit. Exit status = # of errors (0 on success)
+    """execute tests, then exit. Exit status = # of errors (0 on success)
     """
     sys.exit(__files_loop())

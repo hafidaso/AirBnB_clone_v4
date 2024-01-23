@@ -1,19 +1,12 @@
+/* Script that listen for changes on each INPUT checkbox tag */
 $('document').ready(function () {
-  const dictIds = {};
-  $('.amenities input:checkbox').change(function () {
-    if ($(this).is(':checked')) {
-      dictIds[$(this).attr('data-name')] = $(this).attr('data-id');
-    } else {
-      delete dictIds[$(this).attr('data-name')];
-    }
-    let names = '';
-    for (const key in dictIds) {
-      if (names === '') {
-        names = key;
-        continue;
-      }
-      names = names + ', ' + key;
-    }
-    $('.amenities h4').text(names);
-  });
-});
+   const amenitiesId = {};
+   $('INPUT[type="checkbox"]').click(function () {
+     if ($(this).prop('checked')) {
+       amenitiesId[$(this).attr('data-id')] = $(this).attr('data-name');
+     } else {
+       delete amenitiesId[$(this).attr('data-id')];
+     }
+     $('.amenities h4').text(Object.values(amenitiesId).join(', '));
+   });
+ });

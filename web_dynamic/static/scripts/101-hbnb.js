@@ -1,171 +1,200 @@
-document.ready(function () {
-	const HOST = "http://127.0.0.1:5001";
-	const amenities = {};
-	const cities = {};
-	const states = {};
+/* Dynamic Funcionality */
+$('document').ready(function () {
+  /* Listens for changes on each amenities INPUT checkbox tag */
+  const amenitiesId = {};
+  $('.amenities INPUT[type="checkbox"]').click(function () {
+    if ($(this).prop('checked')) {
+      amenitiesId[$(this).attr('data-id')] = $(this).attr('data-name');
+    } else {
+      delete amenitiesId[$(this).attr('data-id')];
+    }
+    $('.amenities h4').text(Object.values(amenitiesId).join(', '));
+  });
+  /* Listens for changes on each states INPUT checkbox tag */
+  const statesId = {};
+  const citiesId = {};
+  const citiesStates = {};
+  $('.locations h2 INPUT[type="checkbox"]').click(function () {
+    if ($(this).prop('checked')) {
+      statesId[$(this).attr('data-id')] = $(this).attr('data-name');
+      citiesStates[$(this).attr('data-id')] = $(this).attr('data-name');
+    } else {
+      delete statesId[$(this).attr('data-id')];
+      delete citiesStates[$(this).attr('data-id')];
+    }
+    $('.locations h4').text(Object.values(citiesStates).join(', '));
+    // Object.assign(citiesStates, statesId, citiesId);
+    // $('.locations h4').text(Object.values(citiesStates).join(', '));
+  });
+  /* Listens for changes on each cities INPUT checkbox tag */
+  $('.locations ul li ul INPUT[type="checkbox"]').click(function () {
+    if ($(this).prop('checked')) {
+      citiesId[$(this).attr('data-id')] = $(this).attr('data-name');
+      citiesStates[$(this).attr('data-id')] = $(this).attr('data-name');
+    } else {
+      delete citiesId[$(this).attr('data-id')];
+      delete citiesStates[$(this).attr('data-id')];
+    }
+    $('.locations h4').text(Object.values(citiesStates).join(', '));
+  });
+  /* Get status of api and change class if api not available
+  Request status every 10 seconds */
+  /* Simple way, manual re-loading page: */
+  /* $.get(`http://${window.location.hostname}:5001/api/v1/status/`, function(status){
+    if (status.status === 'OK') {
+      $('DIV#api_status').addClass('available');
+    } else {
+       $('DIV#api_status').removeClass('available');
+    }
+  });
+  */
+  const callout = function () {
+    $.ajax({
+      type: 'get',
+      url: `http://${window.location.hostname}:5001/api/v1/status/`,
+      timeout: 5000,
+      success: function (status) {
+        if (status.status === 'OK') {
+          $('DIV#api_status').addClass('available');
+        } else {
+          $('DIV#api_status').removeClass('available');
+        }
+      },
+      error: function () {
+        $('DIV#api_status').removeClass('available');
+      },
+      complete: function () {
+        setTimeout(callout, 10000);
+      }
+    });
+  };
+  callout();
 
-	$('ul li input[type="checkbox"]').bind("change", (e) => {
-		const el = e.target;
-		let tt;
-		switch (el.id) {
-			case "state_filter":
-				tt = states;
-				break;
-			case "city_filter":
-				tt = cities;
-				break;
-			case "amenity_filter":
-				tt = amenities;
-				break;
-		}
-		if (el.checked) {
-			tt[el.dataset.name] = el.dataset.id;
-		} else {
-			delete tt[el.dataset.name];
-		}
-		if (el.id === "amenity_filter") {
-			$(".amenities h4").text(Object.keys(amenities).sort().join(", "));
-		} else {
-			$(".locations h4").text(
-				Object.keys(Object.assign({}, states, cities)).sort().join(", ")
-			);
-		}
-	});
+  /* Retrieve all places and create a articule tag with them */
+  const getPlaces = function (data) {
+    $.ajax({
+      type: 'POST',
+      contentType: 'application/json',
+      url: 'http://localhost:5001/api/v1/places_search/',
+      data: '{}',
+      dataType: 'json',
+      success: function (places) {
+        $.each(places, function (index, place) {
+          $('.places').append(
+            '<article>' +
+            '<div class="title_box">' +
+            '<h2>' + place.name + '</h2>' +
+            '<div class="price_by_night">' + '$' + place.price_by_night +
+            '</div>' +
+            '</div>' +
+            '<div class="information">' +
+            '<div class="max_guest">' +
+            '<br />' + place.max_guest + ' Guests' +
+            '</div>' +
+            '<div class="number_rooms">' +
+            '<br />' + place.number_rooms + ' Bedrooms' +
+            '</div>' +
+            '<div class="number_bathrooms">' +
+            '<br />' + place.number_bathrooms + ' Bathroom' +
+            '</div>' +
+            '</div>' +
+            '<div class="description">' + place.description +
+            '</div>' +
+            '<div class="reviews" id="' + place.id + '">' +
+            '<h2><b>Reviews</b></h2>' +
+            '<span class="display" id="' + place.id + '"> Show</span>' +
+            '</div>' +
+            '</article>'
+          );
+        });
+      }
+    });
+  };
+  getPlaces();
 
-	// Obtain status of API
-	$.getJSON("http://0.0.0.0:5001/api/v1/status/", (data) => {
-		if (data.status === "OK") {
-			$("div#api_status").addClass("available");
-		} else {
-			$("div#api_status").removeClass("available");
-		}
-	});
+  /*
+    Get reviews list from a place when display class is clicked
+  */
+  $('.places').on('click', '.display', function () {
+    const reviewId = 'div#' + $(this).attr('id');
+    if ($(this).text() === ' Show') {
+      $(this).text(' Hide');
+      $.ajax({
+        type: 'GET',
+        url: 'http://localhost:5001/api/v1/places/' + $(this).attr('id') + '/reviews',
+        success: function (reviews) {
+          const reviewsNumbers = Object.keys(reviews).length;
+          $(reviewId + ' h2').prepend(reviewsNumbers + ' ');
+          $.each(reviews, function (index, review) {
+            const date = review.created_at.split('T')[0];
+            $.ajax({
+              type: 'GET',
+              url: 'http://localhost:5001/api/v1/users/' + review.user_id,
+              success: function (user) {
+                $(reviewId).append(
+                  '<ul>' +
+                  '<li>' +
+                  '<h3>' + 'From ' + user.first_name + ' ' + user.last_name +
+                  ' ' + date + '</h3>' +
+                  '<p>' + review.text + '</p>' +
+                  '</li>' +
+                  '</ul>'
+                );
+              }
+            });
+          });
+        }
+      });
+    } else {
+      $('.reviews h2').text('Reviews');
+      $('span').text(' Show');
+      $(reviewId + ' ul').css('display', 'none');
+    }
+  });
 
-	// Convey data about places
-	$.post({
-		url: `${HOST}/api/v1/places_search`,
-		data: JSON.stringify({}),
-		headers: {
-			"Content-Type": "application/json",
-		},
-		success: (data) => {
-			data.forEach((place) =>
-				$("section.places").append(
-					`<article>
-			<div class="title_box">
-			<h2>${place.name}</h2>
-			<div class="price_by_night">$${place.price_by_night}</div>
-			</div>
-			<div class="information">
-			<div class="max_guest">${place.max_guest} Guest${
-						place.max_guest !== 1 ? "s" : ""
-					}</div>
-			<div class="number_rooms">${place.number_rooms} Bedroom${
-						place.number_rooms !== 1 ? "s" : ""
-					}</div>
-			<div class="number_bathrooms">${place.number_bathrooms} Bathroom${
-						place.number_bathrooms !== 1 ? "s" : ""
-					}</div>
-			</div> 
-			<div class="description">
-			${place.description}
-			</div>
-				</article>`
-				)
-			);
-		},
-		dataType: "json",
-	});
-
-	// Hunt places
-	$(".filters button").bind("click", searchPlace);
-	searchPlace();
-
-
-	 // Convey places
-	 function searchPlace() {
-		$.post({
-		  url: `${HOST}/api/v1/places_search`,
-		  data: JSON.stringify({
-			amenities: Object.values(amenities),
-			states: Object.values(states),
-			cities: Object.values(cities),
-		  }),
-		  headers: {
-			"Content-Type": "application/json",
-		  },
-		  success: (data) => {
-			$("section.places").empty();
-			data.forEach((d) => console.log(d.id));
-			data.forEach((place) => {
-			  $("section.places").append(
-				`<article>
-				  <div class="title_box">
-					<h2>${place.name}</h2>
-					<div class="price_by_night">$${place.price_by_night}</div>
-				  </div>
-				  <div class="information">
-					<div class="max_guest">${place.max_guest} Guest${
-				  place.max_guest !== 1 ? "s" : ""
-				}</div>
-					  <div class="number_rooms">${place.number_rooms} Bedroom${
-				  place.number_rooms !== 1 ? "s" : ""
-				}</div>
-					  <div class="number_bathrooms">${
-						place.number_bathrooms
-					  } Bathroom${place.number_bathrooms !== 1 ? "s" : ""}</div>
-				  </div> 
-				  <div class="description">
-					${place.description}
-				  </div>
-				  <div class="reviews" data-place="${place.id}">
-					<h2></h2>
-					<ul></ul>
-				  </div>
-				</article>`
-			  );
-			  fetchReviews(place.id);
-			});
-		  },
-		  dataType: "json",
-		});
-	  }
-	
-	  function fetchReviews(placeId) {
-		$.getJSON(
-		  `${HOST}/api/v1/places/${placeId}/reviews`,
-		  (data) => {
-			$(`.reviews[data-place="${placeId}"] h2`)
-			  .text("test")
-			  .html(`${data.length} Reviews <span id="toggle_review">show</span>`);
-			$(`.reviews[data-place="${placeId}"] h2 #toggle_review`).bind(
-			  "click",
-			  { placeId },
-			  function (e) {
-				const rev = $(`.reviews[data-place="${e.data.placeId}"] ul`);
-				if (rev.css("display") === "none") {
-				  rev.css("display", "block");
-				  data.forEach((r) => {
-					$.getJSON(
-					  `${HOST}/api/v1/users/${r.user_id}`,
-					  (u) =>
-						$(".reviews ul").append(`
-					  <li>
-						<h3>From ${u.first_name + " " + u.last_name} the ${
-						  r.created_at
-						}</h3>
-						<p>${r.text}</p>
-					  </li>`),
-					  "json"
-					);
-				  });
-				} else {
-				  rev.css("display", "none");
-				}
-			  }
-			);
-		  },
-		  "json"
-		);
-	  }
+  /* Filter places by amenities on button search click */
+  $('button').click(function () {
+    $.ajax({
+      type: 'POST',
+      contentType: 'application/json',
+      url: 'http://localhost:5001/api/v1/places_search/',
+      data: JSON.stringify({
+        amenities: Object.keys(amenitiesId),
+        states: Object.keys(statesId),
+        cities: Object.keys(citiesId)
+      }),
+      dataType: 'json',
+      success: function (places) {
+        $('.places').empty();
+        $.each(places, function (index, place) {
+          $('.places').append(
+            '<article>' +
+            '<div class="title_box">' +
+            '<h2>' + place.name + '</h2>' +
+            '<div class="price_by_night">' + '$' + place.price_by_night +
+            '</div>' +
+            '</div>' +
+            '<div class="information">' +
+            '<div class="max_guest">' +
+            '<br />' + place.max_guest + ' Guests' +
+            '</div>' +
+            '<div class="number_rooms">' +
+            '<br />' + place.number_rooms + ' Bedrooms' +
+            '</div>' +
+            '<div class="number_bathrooms">' +
+            '<br />' + place.number_bathrooms + ' Bathroom' +
+            '</div>' +
+            '</div>' +
+            '<div class="description">' + place.description +
+            '</div>' +
+            '<div class="reviews" id="' + place.id + '">' +
+            '<h2><b>Reviews</b></h2>' +
+            '<span class="display" id="' + place.id + '"> Show</span>' +
+            '</div>' +
+            '</article>'
+          );
+        });
+      }
+    });
+  });
 });
